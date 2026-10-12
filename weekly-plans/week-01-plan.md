@@ -17,7 +17,7 @@
 1. Clone the source into a temporary working directory.
 2. Inspect the root tree and identify application code versus old deployment, infrastructure, pipeline, and observability artifacts.
 3. Confirm the 11-service Online Boutique structure and locate the app's build/container instructions.
-4. Create the new `eks-sre-observability-lab` repository and copy only the reviewed application source into it.
+4. Create the new `eks-sre-observability` repository and copy only the reviewed application source into it.
 5. Add a minimal README note that this repository is being rebuilt from scratch; do not claim infrastructure exists.
 
 **Deliverable:** clean application baseline in the project repository.

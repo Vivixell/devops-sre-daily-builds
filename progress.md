@@ -1,12 +1,12 @@
 # Progress Tracker
 
 **Current Pass:** Pass 1 (AI-assisted)  
-**Current Day:** Day 1  
+**Current Day:** Day 2 
 **Current status:** Not started  
-**Last updated:** 2026-10-11
-**Streaks**: 0
+**Last updated:** 2026-10-12
+**Streaks**: 1
 **Missed days**: 0
-**Longest Streak**: 0
+**Longest Streak**: 1
 
 ## How to use this tracker
 
@@ -22,7 +22,7 @@
 
 | Day | Theme | Pass | Status | Time | Deliverable / evidence | Main gap |
 |---:|---|---|---|---|---|---|
-| 1 | Audit application source and clean baseline | Pass 1 | Not started | — | — | — |
+| 1 | Audit application source and clean baseline | Pass 1 | Done | 140 mins | Baseline committed to main; app source + 11 services identified | shoppingassistantservice purpose; cartservice store options |
 | 2 | Repository structure and PR workflow | Pass 1 | Not started | — | — | — |
 | 3 | Terraform layer and state design | Pass 1 | Not started | — | — | — |
 | 4 | Terraform bootstrap | Pass 1 | Not started | — | — | — |
