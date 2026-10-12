@@ -91,41 +91,40 @@ Use status values such as `Not started`, `In progress`, `Done`, and `Blocked`. R
 - Keep cost awareness visible: NAT gateways, load balancers, public IPv4 addresses, EBS volumes, managed observability services, VPC endpoints, and idle clusters can all incur charges.
 - Never run a destroy command without checking the workspace, account, region, state, and planned resources.
 
-### Suggested repository layout
+### Repository layout
+
+Current layout, based on the actual repositories.
+
+#### Code and infrastructure: `eks-sre-observability`
 
 ```text
-eks-sre-observability-lab/
-├── application/
-├── terraform/
-│   ├── bootstrap/
-│   ├── persistent/
-│   └── ephemeral/
-├── kubernetes/
-│   ├── base/
-│   └── overlays/
-├── helm/
-├── argocd/
-├── observability/
-│   ├── prometheus/
-│   ├── grafana/
-│   ├── alertmanager/
-│   ├── logging/
-│   └── tracing/
-├── security/
-├── scripts/
-├── docs/
-└── .github/workflows/
+eks-sre-observability/
+├── src/                          # Online Boutique microservices source
+├── protos/                       # gRPC protobuf definitions
+├── bootstrap/                    # Terraform bootstrap (remote state prerequisites)
+├── terraform/                    # Terraform infrastructure layers
+├── helm/                         # Helm chart for the application
+├── gitops/                       # Argo CD configuration and Applications
+├── kubernetes-manifests/         # Raw manifests (learning reference only)
+├── kustomize/                    # Kustomize examples (learning reference only)
+├── sonar-project.properties      # SonarQube analysis configuration
+├── .github/workflows/            # GitHub Actions workflows
+└── README.md
 ```
 
+Folders are added when the work package needs them, for example `scripts/` and `docs/`. `kubernetes-manifests/` and `kustomize/` are not part of the active deployment path.
+
+#### Documentation: `devops-sre-daily-builds`
+
 ```text
-devops-sre-daily-builds-2026/
-├── master-plan.md
-├── week-01-plan.md
-├── progress.md
-├── daily-logs/
-├── weekly-reviews/
-├── troubleshooting/
-└── portfolio-evidence/
+devops-sre-daily-builds/
+├── README.md
+├── master-plan.md                # Goals, rules and full roadmap
+├── new-ai-chat-handoff.md        # Starting a new AI chat
+├── progress.md                   # Current day, pass and status
+├── weekly-plans/                 # One detailed plan per week
+├── daily-logs/                   # One log per completed day
+└── notes/                        # Architecture decisions, troubleshooting, concepts
 ```
 
 ## 8. DevSecOps and portfolio standard
