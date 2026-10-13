@@ -33,7 +33,7 @@
 - Done when a feature branch and pull request can be used, and the main folders exist with a short purpose note.
 
 **Tasks**
-1. Create folders for `terraform/bootstrap`, `terraform/persistent`, `terraform/ephemeral`, `kubernetes/base`, `helm`, `argocd`, `observability`, `security`, `scripts`, and `.github/workflows`.
+1. Create folders for `terraform/persistent`, `terraform/ephemeral`, `kubernetes/base`, `helm`, `argocd`, `observability`, `security`, `scripts`, and `.github/workflows`.
 2. Add a `.gitignore` for Terraform state/cache, kubeconfig, local environment files, credentials, and generated artifacts.
 3. Create a feature branch and make a small structural commit.
 4. Open a PR and merge it yourself after checking the diff.
