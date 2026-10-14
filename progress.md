@@ -1,12 +1,11 @@
 # Progress Tracker
 
-**Current Pass:** Pass 1 (AI-assisted)  
-**Current Day:** Day 3 
-**Current status:** Not started  
-**Last updated:** 2026-10-13
-**Streaks**: 2
+**Current Day:** Day 5
+**Current status:** Not started
+**Last updated:** 2026-10-14
+**Streaks**: 3
 **Missed days**: 0
-**Longest Streak**: 2
+**Longest Streak**: 3
 
 ## How to use this tracker
 
@@ -22,10 +21,10 @@
 
 | Day | Theme | Pass | Status | Time | Deliverable / evidence | Main gap |
 |---:|---|---|---|---|---|---|
-| 1 | Audit application source and clean baseline | Pass 1 | Done | 140 min | Baseline committed to main; app source + 11 services identified | shoppingassistantservice purpose; cartservice store options |
-| 2 | Repository structure and PR workflow | Pass 1 | Done |120 min | PR 1 merged; direct push to main rejected (GH013) | None |
-| 3 | Terraform layer and state design | Pass 1 | Not started | — | — | — |
-| 4 | Terraform bootstrap | Pass 1 | Not started | — | — | — |
+| 1 | Audit application source and clean baseline | Pass 1 | Done | 140 mins | Baseline committed to main; app source + 11 services identified | shoppingassistantservice purpose; cartservice store options |
+| 2 | Repository structure and PR workflow | Pass 1 | Done |120 mins | PR 1 merged; direct push to main rejected (GH013) | None |
+| 3 | Terraform layer and state design | Pass 1 | Done | 120 mins | Two-layer design (bootstrap + main) with OIDC/ECR placement and teardown order, logged in daily-logs/day-03.md | none |
+| 4 | Terraform bootstrap | Pass 1 | Done | 120 mins | PR #X merged; state bucket, ECR and OIDC applied; state migrated to S3 (bootstrap/terraform.tfstate), clean plan | AWS credential chain precedence (env vars vs AWS_PROFILE) |
 | 5 | GitHub OIDC and AWS role | Pass 1 | Not started | — | — | — |
 | 6 | Gitleaks secret scanning | Pass 1 | Not started | — | — | — |
 | 7 | Terraform PR validation/plan | Pass 1 | Not started | — | — | — |
@@ -41,11 +40,13 @@ Continue the table for later Days as the detailed weekly plans are created. The 
 
 ## Current checkpoint
 
-Not started. Begin with Day 1 in `week-01-plan.md`.
+Day 5. Bootstrap is applied and its state is in S3. The OIDC provider and deploy role exist with no permissions. Next: split plan and apply roles and verify role assumption from a workflow.
 
 ## Blockers / decisions
 
-- None recorded yet.
+- Two Terraform layers instead of three: `terraform/bootstrap/` (local apply, owns state bucket, OIDC, role, ECR) and the main layer(s) under `terraform/` (pipeline).
+- Design notes and write-ups live in the documentation repo only, never in the project repo.
+- `master-plan.md` is the overall flow; small implementation-driven changes are recorded here and in the handoff file.
 
 ## Weekly review
 

@@ -13,7 +13,7 @@ For an ongoing chat, usually send only the Day number, Pass, what you attempted,
 
 Important architecture decisions:
 
-- Use `master-plan.md` as the source of truth.
+- Use `master-plan.md` as the source of truth for the overall flow. Small changes can occur when implementation limits or better designs appear. The handoff and `progress.md` record those changes, and `master-plan.md` is not rewritten for each one.
 - Terraform owns AWS infrastructure and the initial Argo CD installation.
 - Argo CD manages the application and observability Helm releases.
 - Helm is the only deployment method used for the application pipeline.
@@ -22,3 +22,24 @@ Important architecture decisions:
 - Never assign the same Helm release to both Terraform and Argo CD.
 - Use the existing repository names and folder structure. Do not propose a restructuring unless a concrete problem justifies it.
 - Before suggesting changes, check the current work package, existing repository structure, and architecture decisions. Keep changes small and consistent with the plan.
+
+Documentation rules:
+
+- The project repo (`eks-sre-observability`) holds only code, configuration and the existing README/placeholder READMEs. Do not create design docs, notes or write-ups in it.
+- Design notes, architecture decisions, troubleshooting, concept notes and daily logs go in the documentation repo (`devops-sre-daily-builds`), under `notes/` for personal study notes and `daily-logs/` for logs.
+- If a work package or plan says to create a doc in the project repo (for example `docs/infrastructure-design.md`), create it in the documentation repo instead.
+
+Deviations from `master-plan.md` made so far:
+
+- Terraform uses two layers, not three. `terraform/bootstrap/` is applied locally, manually, and not through the pipeline. It owns the S3 state bucket, the GitHub OIDC provider, the deploy role and the ECR repositories. A separate `persistent` layer is not used, and can be added later if long-lived resources appear.
+- Everything else (VPC, EKS, node group, access entries, Pod Identity, Argo CD install) goes in its own layer(s) under `terraform/`, deployed by GitHub Actions. Separate folders or modules per component can be added when each is built.
+- Week 1 Day 3 (design) and Day 4 (bootstrap) were done together. They are logged as separate rows with separate acceptance checks.
+- Day 5 now covers verifying role assumption from a workflow and splitting the roles: a read-only plan role trusted for pull requests, and an apply role trusted only for `main`. The deploy role exists but has no permissions yet.
+
+Infrastructure as built:
+
+- AWS account `<account-id>`, region `us-east-1`. Terraform 1.14.x, AWS provider 6.x.
+- State: S3 bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, key `bootstrap/terraform.tfstate`, native locking (`use_lockfile`), no DynamoDB. Bootstrap was applied with local state first, then migrated with `terraform init -migrate-state`.
+- Auth: `aws login` profile `ovr-busayo`. Run `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`, then `export AWS_PROFILE=ovr-busayo`, and confirm `aws sts get-caller-identity` before any `terraform` command. Leftover credential variables override the profile.
+- OIDC role `eks-sre-github-deploy` trusts `Vivixell/eks-sre-observability` on `main` and `pull_request`.
+- Teardown order: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.
