@@ -34,12 +34,14 @@ Deviations from `master-plan.md` made so far:
 - Terraform uses two layers, not three. `terraform/bootstrap/` is applied locally, manually, and not through the pipeline. It owns the S3 state bucket, the GitHub OIDC provider, the deploy role and the ECR repositories. A separate `persistent` layer is not used, and can be added later if long-lived resources appear.
 - Everything else (VPC, EKS, node group, access entries, Pod Identity, Argo CD install) goes in its own layer(s) under `terraform/`, deployed by GitHub Actions. Separate folders or modules per component can be added when each is built.
 - Week 1 Day 3 (design) and Day 4 (bootstrap) were done together. They are logged as separate rows with separate acceptance checks.
-- Day 5 now covers verifying role assumption from a workflow and splitting the roles: a read-only plan role trusted for pull requests, and an apply role trusted only for `main`. The deploy role exists but has no permissions yet.
+- Day 5 was done as: two OIDC roles (read-only plan role for pull requests, apply role for `main`), with role assumption verified from a workflow.
 
 Infrastructure as built:
 
 - AWS account `<account-id>`, region `us-east-1`. Terraform 1.14.x, AWS provider 6.x.
 - State: S3 bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, key `bootstrap/terraform.tfstate`, native locking (`use_lockfile`), no DynamoDB. Bootstrap was applied with local state first, then migrated with `terraform init -migrate-state`.
 - Auth: `aws login` profile `ovr-busayo`. Run `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`, then `export AWS_PROFILE=ovr-busayo`, and confirm `aws sts get-caller-identity` before any `terraform` command. Leftover credential variables override the profile.
-- OIDC role `eks-sre-github-deploy` trusts `Vivixell/eks-sre-observability` on `main` and `pull_request`.
+- Two OIDC roles in `terraform/bootstrap/`. Apply role `eks-sre-github-deploy`: trusted for `main` only, temporarily `AdministratorAccess` (replace with a scoped policy before project end, do not treat as design). Plan role `eks-sre-github-plan`: trusted for `pull_request` only, read-only plus state access.
+- Trust policies use the immutable subject prefix from repo Settings → Actions → OIDC (`github_sub_prefix`). It includes numeric owner and repo IDs, not just names.
+- Role ARNs are GitHub Actions variables, not secrets. Minimum Terraform is 1.15.0.
 - Teardown order: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.

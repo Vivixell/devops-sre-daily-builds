@@ -1,11 +1,11 @@
 # Progress Tracker
 
-**Current Day:** Day 5
+**Current Day:** Day 6
 **Current status:** Not started
-**Last updated:** 2026-10-14
-**Streaks**: 3
+**Last updated:** 2026-10-15
+**Streaks**: 4
 **Missed days**: 0
-**Longest Streak**: 3
+**Longest Streak**: 4
 
 ## How to use this tracker
 
@@ -25,7 +25,7 @@
 | 2 | Repository structure and PR workflow | Pass 1 | Done |120 mins | PR 1 merged; direct push to main rejected (GH013) | None |
 | 3 | Terraform layer and state design | Pass 1 | Done | 120 mins | Two-layer design (bootstrap + main) with OIDC/ECR placement and teardown order, logged in daily-logs/day-03.md | none |
 | 4 | Terraform bootstrap | Pass 1 | Done | 120 mins | PR #X merged; state bucket, ECR and OIDC applied; state migrated to S3 (bootstrap/terraform.tfstate), clean plan | AWS credential chain precedence (env vars vs AWS_PROFILE) |
-| 5 | GitHub OIDC and AWS role | Pass 1 | Not started | — | — | — |
+| 5 | OIDC role assumption and plan/apply role split | Pass 1 | Done | [X mins] | PR #X merged; plan role assumed from PR run; trust limited to repo main/PR; no stored keys | immutable OIDC subject claim format |
 | 6 | Gitleaks secret scanning | Pass 1 | Not started | — | — | — |
 | 7 | Terraform PR validation/plan | Pass 1 | Not started | — | — | — |
 | 8 | VPC/network layer | Pass 1 | Not started | — | — | — |
@@ -40,13 +40,15 @@ Continue the table for later Days as the detailed weekly plans are created. The 
 
 ## Current checkpoint
 
-Day 5. Bootstrap is applied and its state is in S3. The OIDC provider and deploy role exist with no permissions. Next: split plan and apply roles and verify role assumption from a workflow.
+Day 6. Two OIDC roles exist: apply (main only) and plan (PRs only). Next: Gitleaks local scan and PR workflow.
 
 ## Blockers / decisions
 
 - Two Terraform layers instead of three: `terraform/bootstrap/` (local apply, owns state bucket, OIDC, role, ECR) and the main layer(s) under `terraform/` (pipeline).
 - Design notes and write-ups live in the documentation repo only, never in the project repo.
 - `master-plan.md` is the overall flow; small implementation-driven changes are recorded here and in the handoff file.
+- TEMPORARY: the apply role has AdministratorAccess for troubleshooting. Replace with a scoped policy before the project ends.
+- Day 3/4/5 minimum Terraform version raised to `>= 1.15.0` (S3 backend needs it for `aws login`).
 
 ## Weekly review
 

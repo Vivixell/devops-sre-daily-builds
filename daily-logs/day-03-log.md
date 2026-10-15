@@ -1,6 +1,5 @@
 # Day 3: Terraform layer and state design
 
-**Pass:** Pass 1 (AI-assisted) | **Status:** Done | **Time:** [X mins]
 
 ## 1. Goal and acceptance criteria
 
