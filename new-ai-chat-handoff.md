@@ -7,7 +7,7 @@ Use this short handoff when opening a fresh chat or switching to a new AI accoun
 
 Then paste:
 
-> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` to determine my exact position. I am on Day [N], Pass [1 or 2], with status [status]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, do not give me a solution upfront; ask me to attempt it and provide hints or official documentation pointers only. Do not assume previous infrastructure or pipeline artifacts exist unless the files say so.
+> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` to determine my exact position. I am on Day [7], Pass [1], with status [starting]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, do not give me a solution upfront; ask me to attempt it and provide hints or official documentation pointers only. Do not assume previous infrastructure or pipeline artifacts exist unless the files say so.
 
 For an ongoing chat, usually send only the Day number, Pass, what you attempted, and the exact error/output. Attach the relevant file or log only when needed. Avoid pasting every historical daily log into every new chat.
 
@@ -35,6 +35,7 @@ Deviations from `master-plan.md` made so far:
 - Everything else (VPC, EKS, node group, access entries, Pod Identity, Argo CD install) goes in its own layer(s) under `terraform/`, deployed by GitHub Actions. Separate folders or modules per component can be added when each is built.
 - Week 1 Day 3 (design) and Day 4 (bootstrap) were done together. They are logged as separate rows with separate acceptance checks.
 - Day 5 was done as: two OIDC roles (read-only plan role for pull requests, apply role for `main`), with role assumption verified from a workflow.
+- Day 6: secret scanning is a standalone workflow `.github/workflows/secret-scan.yml` (job `gitleaks`, `gitleaks/gitleaks-action@v3`, triggers: `pull_request`, push to `main`, `workflow_call`), not a job inside the app pipeline. It is a required check on `main`. The pre-commit hook is a local hook (`repo: local`, installed gitleaks binary), not pinned in the repo. The scan runs on all PRs with no path filters.
 
 Infrastructure as built:
 
@@ -45,3 +46,5 @@ Infrastructure as built:
 - Trust policies use the immutable subject prefix from repo Settings → Actions → OIDC (`github_sub_prefix`). It includes numeric owner and repo IDs, not just names.
 - Role ARNs are GitHub Actions variables, not secrets. Minimum Terraform is 1.15.0.
 - Teardown order: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.
+- Gitleaks: local pre-commit hook plus the required `secret-scan` check. CI uses gitleaks 8.24.3 via the action; the repo is under a personal account, so no license key is needed.
+- The workflow has `pull-requests: read` only, so PR comments fail by design; read findings from the job summary.
