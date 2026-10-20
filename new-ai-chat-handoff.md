@@ -45,32 +45,41 @@ Deviations from `master-plan.md` made so far:
 - Day 7: Terraform PR checks are in `.github/workflows/terraform-pr.yml` with three jobs: `fmt`, `validate` and `plan`.
   - `fmt` runs `terraform fmt -check -recursive` over all of `terraform/`.
   - `validate` runs `init -backend=false` and `validate` per layer. `plan` runs `init` and `plan` per layer with the plan role over OIDC, with locking on, and writes the plan to the job summary. Nothing is ever applied from a PR.
-  - Both jobs use a hardcoded matrix, currently `dir: [terraform/bootstrap]`.
+  - Both jobs use a hardcoded matrix, currently `dir: [terraform/bootstrap, terraform/vpc]`.
   - **Rule: whenever a new `terraform/<layer>` folder is created, add it to BOTH the `validate` and `plan` matrices, and give it its own backend key** (for example `vpc/terraform.tfstate`). Remind me if I forget.
   - These checks are not required on `main`, because of the path filter and the matrix check names.
 
-Sample of adding a layer (`terraform/vpc`):
+- Day 8: VPC layer is `terraform/vpc/` with its own state key `vpc/terraform.tfstate` and provider `~> 6.24` (regional NAT needs a recent 6.x). It was applied and destroyed locally and is not currently deployed. Design decisions and the log are in the docs repo (`daily-logs/day-08-log.md`).
+  - Two AZs (us-east-1a/b). VPC `10.20.0.0/16`, public subnets `10.20.0.0/24` and `10.20.1.0/24` (ALB only, no nodes), private subnets `10.20.10.0/24` and `10.20.11.0/24` (nodes and pods). A third AZ would add `10.20.2.0/24` and `10.20.12.0/24`.
+  - One regional NAT gateway, created with `vpc_id` and `availability_mode = "regional"`, so it lives in no subnet. One EIP per active AZ. One shared private route table points `0.0.0.0/0` at it. The IGW is still required.
+  - Endpoints: ECR `ecr.api` and `ecr.dkr` interface endpoints (private DNS on, security group allows 443 from the VPC CIDR) and an S3 gateway endpoint on the private route table. The S3 endpoint carries image layers off the NAT.
+  - Subnets carry EKS discovery tags for cluster `sre-observability` (`kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`, `kubernetes.io/cluster/sre-observability = shared`).
+  - Outputs for the EKS layer: `vpc_id`, `vpc_cidr`, `public_subnet_ids`, `private_subnet_ids`, `private_route_table_id`, `nat_gateway_id`, `vpc_endpoint_security_group_id`.
+  - Public images (Docker Hub, quay.io, registry.k8s.io) still go through the NAT until an ECR pull-through cache is added; that will reuse the same two ECR endpoints.
+
+Sample of adding the next layer (terraform/eks, backend key eks/terraform.tfstate):.
 
 ```yaml
   validate:
     strategy:
       matrix:
-        dir: [terraform/bootstrap, terraform/vpc]
+        dir: [terraform/bootstrap, terraform/vpc, terraform/eks]
   plan:
     strategy:
       matrix:
-        dir: [terraform/bootstrap, terraform/vpc]
+        dir: [terraform/bootstrap, terraform/vpc, terraform/eks]
 ```
 
 Infrastructure as built:
 
-- AWS account `<account-id>`, region `us-east-1`. Terraform 1.16.6 locally (upgraded from 1.14.7 so the S3 backend supports `aws login`), `required_version = ">= 1.15.0, < 2.0.0"`, CI uses `~> 1.15`. AWS provider 6.x.
-- State: S3 bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, key `bootstrap/terraform.tfstate`, native locking (`use_lockfile`), no DynamoDB. Bootstrap was applied with local state first, then migrated with `terraform init -migrate-state`.
+- AWS account `<account-id>`, region `us-east-1`. Terraform 1.16.6 locally (upgraded from 1.14.7 so the S3 backend supports `aws login`), `required_version = ">= 1.15.0, < 2.0.0"`, CI uses `~> 1.15`. AWS provider `~> 6.0` in bootstrap (locked 6.69.0) and `~> 6.24` in vpc.
+- State: S3 bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, native locking (`use_lockfile`), no DynamoDB. Keys: `bootstrap/terraform.tfstate`, `vpc/terraform.tfstate`. Bootstrap was applied with local state first, then migrated with `terraform init -migrate-state`.
 - Variables: all Terraform variables are hardcoded defaults (including `github_sub_prefix`). There is no tfvars file and no `TF_VAR_*` in workflows. The only GitHub Actions variables are the two role ARNs.
-- Auth: `aws login` profile `ovr-busayo`. Run `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`, then `export AWS_PROFILE=ovr-busayo`, and confirm `aws sts get-caller-identity` before any `terraform` command. Leftover credential variables override the profile. No profile is hardcoded in any `.tf` file.
+- Auth: `aws login` at the start of each working day, then switch to a new branch. No named profile is used and none is hardcoded in any `.tf` file. Confirm with `aws sts get-caller-identity` before any `terraform` command. Terraform 1.16.x is required for the S3 backend to use `aws login` credentials.
 - Two OIDC roles in `terraform/bootstrap/`. Apply role `eks-sre-github-deploy` (variable `AWS_APPLY_ROLE_ARN`): trusted for `main` only, temporarily `AdministratorAccess` (replace with a scoped policy before project end, do not treat as design). Plan role `eks-sre-github-plan` (variable `AWS_PLAN_ROLE_ARN`): trusted for `pull_request` only, with `ReadOnlyAccess`, state bucket read, and write on `*.tflock` only (S3 native locking needs it).
 - Trust policies use the immutable subject prefix from repo Settings → Actions → OIDC (`github_sub_prefix`). It includes numeric owner and repo IDs, not just names.
 - Role ARNs are GitHub Actions variables, not secrets.
 - Teardown order: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.
 - Gitleaks: local pre-commit hook plus the required `secret-scan` check. CI uses gitleaks 8.24.3 via the action; the repo is under a personal account, so no license key is needed.
 - The `secret-scan` workflow has `pull-requests: read` only, so PR comments fail by design; read findings from the job summary. `terraform-pr` also posts no PR comments and uses the job summary.
+- - Ephemeral layers (currently `terraform/vpc`) are applied locally and destroyed at the end of each session; only bootstrap persists. The Day 13 workflows will take over apply and destroy.

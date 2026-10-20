@@ -1,11 +1,11 @@
 # Progress Tracker
 
-**Current Day:** Day 8
+**Current Day:** Day 9
 **Current status:** Not started
-**Last updated:** 2026-10-19
-**Streaks**: 6
+**Last updated:** 2026-10-20
+**Streaks**: 7
 **Missed days**: 0
-**Longest Streak**: 6
+**Longest Streak**: 7
 
 ## How to use this tracker
 
@@ -28,7 +28,7 @@
 | 5 | OIDC role assumption and plan/apply role split | Pass 1 | Done | 120min | PR #4 merged; plan role assumed from PR run; trust limited to repo main/PR; no stored keys | immutable OIDC subject claim format |
 | 6 | Gitleaks secret scanning | Pass 1 | Done | [X mins] | PR #5 merged; `secret-scan` required on main; canary PR #6 failed with github-pat finding and merge blocked; hook blocked canary locally | Local hook and CI gitleaks versions can differ |
 | 7 | Terraform PR validation/plan | Pass 1 | Done | 120 mins | PR #7 merged; `terraform-pr` runs fmt, validate and plan on PRs; bootstrap plan clean (no changes); no apply in PR | Why the plan role needs write on `*.tflock` for native locking |
-| 8 | VPC/network layer | Pass 1 | Not started | — | — | — |
+| 8 | VPC/network layer | Pass 1 | Done | 180 mins | `terraform/vpc` applied and destroyed locally: 2-AZ VPC, regional NAT, ECR/S3 endpoints; PR matrix updated; log in `day-08-log.md` | None |
 | 9 | EKS provisioning | Pass 1 | Not started | — | — | — |
 | 10 | EKS access entries and kubectl | Pass 1 | Not started | — | — | — |
 | 11 | Online Boutique plain-manifest deployment | Pass 1 | Not started | — | — | — |
