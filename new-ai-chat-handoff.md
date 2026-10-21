@@ -1,85 +1,63 @@
 # New AI Chat Handoff
 
-Use this short handoff when opening a fresh chat or switching to a new AI account. Attach these three files:
-1. `master-plan.md`
-2. The current `week-NN-plan.md`
-3. `progress.md`
+Attach these three files when opening a fresh chat or switching AI accounts: `master-plan.md`, the current `week-NN-plan.md`, and `progress.md`. Then paste:
 
-Then paste:
+> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` for my exact position. I am on Day [10], Pass [1], status [starting]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, give no solution upfront: ask me to attempt it and give only hints or official-doc pointers. Do not assume earlier infrastructure or pipeline artifacts exist unless the files say so.
 
-> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` to determine my exact position. I am on Day [8], Pass [1], with status [starting]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, do not give me a solution upfront; ask me to attempt it and provide hints or official documentation pointers only. Do not assume previous infrastructure or pipeline artifacts exist unless the files say so.
+For an ongoing chat, send only the Day, Pass, what was attempted and the exact error/output. Attach a file or log only when needed.
 
-For an ongoing chat, usually send only the Day number, Pass, what you attempted, and the exact error/output. Attach the relevant file or log only when needed. Avoid pasting every historical daily log into every new chat.
+**Maintenance rule:** this file is a current-state snapshot. Update the relevant bullet in place; do not append per-day entries. History lives in `daily-logs/` and `progress.md`.
 
-Important architecture decisions:
+## Architecture decisions
 
-- Use `master-plan.md` as the source of truth for the overall flow. Small changes can occur when implementation limits or better designs appear. The handoff and `progress.md` record those changes, and `master-plan.md` is not rewritten for each one.
-- Terraform owns AWS infrastructure and the initial Argo CD installation.
-- Argo CD manages the application and observability Helm releases.
-- Helm is the only deployment method used for the application pipeline.
-- `kubernetes-manifests/` and `kustomize/` are retained for reference and learning, not for deploying the application.
-- GitHub Actions builds, tests, scans, and publishes immutable application images to ECR. It proposes Helm values updates in Git; Argo CD reconciles merged changes.
-- Never assign the same Helm release to both Terraform and Argo CD.
-- Use the existing repository names and folder structure. Do not propose a restructuring unless a concrete problem justifies it.
-- Before suggesting changes, check the current work package, existing repository structure, and architecture decisions. Keep changes small and consistent with the plan.
+- `master-plan.md` is the source of truth. Small deviations are recorded here and in `progress.md`; the master plan is not rewritten for each one.
+- Terraform owns AWS infrastructure and the initial Argo CD install. Argo CD manages the application and observability Helm releases. Never assign the same Helm release to both.
+- Helm is the only deployment method for the application pipeline. `kubernetes-manifests/` and `kustomize/` are reference only.
+- GitHub Actions builds, tests, scans and publishes immutable images to ECR, and proposes Helm values updates in Git. Argo CD reconciles merged changes.
+- Keep existing repo names and structure; restructure only for a concrete problem. Before suggesting changes, check the current work package, repo structure and these decisions, and keep changes small.
 
-Working rules for the assistant:
+## Working rules
 
-- Ask for the relevant files before assuming their contents. Do not generate files while something is still unverified.
-- Verify against the real files (`variables.tf`, `backend.tf`, `roles.tf`, and so on) instead of guessing defaults, variables or permissions.
-- Give file contents as markdown code blocks. Keep explanations concise, and include the "why" behind each decision.
+- Ask for the relevant files before assuming contents, and verify against the real files (`variables.tf`, `backend.tf`, `roles.tf`, and so on). Do not generate files while something is unverified.
+- Give file contents as markdown code blocks. Keep explanations concise and include the "why".
+- The project repo `eks-sre-observability` holds code, config and existing READMEs only. Design notes, architecture decisions, troubleshooting, concept notes and daily logs go in the docs repo `devops-sre-daily-builds` (`notes/`, `daily-logs/`), even if a plan says to create a doc in the project repo.
 
-Documentation rules:
+## Current state
 
-- The project repo (`eks-sre-observability`) holds only code, configuration and the existing README/placeholder READMEs. Do not create design docs, notes or write-ups in it.
-- Design notes, architecture decisions, troubleshooting, concept notes and daily logs go in the documentation repo (`devops-sre-daily-builds`), under `notes/` for personal study notes and `daily-logs/` for logs.
-- If a work package or plan says to create a doc in the project repo (for example `docs/infrastructure-design.md`), create it in the documentation repo instead.
+**Terraform layout**
+- Three layers so far: `bootstrap`, `vpc`, `eks`. No `persistent` layer (add one if long-lived resources appear). `terraform/bootstrap/` was applied manually from the workstation with state in S3. It owns the state bucket, GitHub OIDC provider, two OIDC roles and ECR repos.
+- Each layer has its own folder under `terraform/` and its own state key in the same bucket, split by lifecycle and provider needs, not by resource type:
+  - `vpc`: network (done).
+  - `eks`: cluster, node group, add-ons and access entries (done, Day 9). Workload IAM roles, Pod Identity associations and EBS CSI are deferred to their own work packages.
+  - `Argo CD` (planned): initial Argo CD install and any other Terraform-owned Helm release. It is separate because the `kubernetes`/`helm` providers need the cluster to exist first.
+- Pipeline direction: every layer must be deployable locally and through one ordered workflow (vpc, eks, helm), with a matching destroy workflow in reverse order. Bootstrap stays manual and is never destroyed by a workflow.
+- Layers are planned in PRs and will be applied by manually triggered workflows using the apply role (Day 13). Until then local apply is fine (remote state, S3 lock). Apply lower layers before opening the PR, because the `eks` plan reads the `vpc` remote state. Ephemeral layers are destroyed after each session (`eks` first, then `vpc`); only bootstrap persists.
 
-Deviations from `master-plan.md` made so far:
+**CI**
+- Secret scanning: standalone `.github/workflows/secret-scan.yml` (job `gitleaks`, `gitleaks-action@v3`, gitleaks 8.24.3; triggers `pull_request`, push to `main`, `workflow_call`; no path filters). Required check on `main`. No license key (personal account). It has `pull-requests: read` only, so PR comments fail by design; read the job summary. The local pre-commit hook is `repo: local` using the installed binary.
+- Terraform PR checks: `.github/workflows/terraform-pr.yml` with jobs `fmt`, `validate`, `plan`. `fmt` runs `terraform fmt -check -recursive` over `terraform/`. `validate` runs `init -backend=false` and `validate` per layer. `plan` runs `init` and `plan` per layer with the plan role over OIDC, locking on, output to the job summary (no PR comments). Nothing is applied from a PR. The matrix is hardcoded, currently `dir: [terraform/bootstrap, terraform/vpc]`. These checks are not required on `main` (path filter and matrix check names).
+- **Rule: whenever a new `terraform/<layer>` folder is created, add it to BOTH the `validate` and `plan` matrices and give it its own backend key (for example `eks/terraform.tfstate`). Remind me if I forget.**
+- Layers that read lower layers (`eks` reads vpc state, `helm` needs a live cluster) can only plan while those layers are up. Bring the lower layers up before opening a PR that touches them; a plan error about missing outputs or an unreachable cluster means a lower layer is down, not a code bug.
 
-- Terraform uses two layers, not three. `terraform/bootstrap/` was applied manually from the workstation, not through the pipeline, and its state lives in the S3 bucket. It owns the S3 state bucket, the GitHub OIDC provider, the two OIDC roles and the ECR repositories. A separate `persistent` layer is not used, and can be added later if long-lived resources appear.
-- Everything else (VPC, EKS, node group, access entries, Pod Identity, Argo CD install) goes in its own layer(s) under `terraform/`, each with its own state key in the same bucket. Later layers are planned in PRs and applied through manually triggered GitHub Actions workflows using the apply role (built on Day 13). Until then, a local apply is also acceptable, because the state is remote and shared and the S3 lock prevents concurrent runs.
-- Week 1 Day 3 (design) and Day 4 (bootstrap) were done together. They are logged as separate rows with separate acceptance checks.
-- Day 5 was done as: two OIDC roles (read-only plan role for pull requests, apply role for `main`), with role assumption verified from a workflow.
-- Day 6: secret scanning is a standalone workflow `.github/workflows/secret-scan.yml` (job `gitleaks`, `gitleaks/gitleaks-action@v3`, triggers: `pull_request`, push to `main`, `workflow_call`), not a job inside the app pipeline. It is a required check on `main`. The pre-commit hook is a local hook (`repo: local`, installed gitleaks binary), not pinned in the repo. The scan runs on all PRs with no path filters.
-- Day 7: Terraform PR checks are in `.github/workflows/terraform-pr.yml` with three jobs: `fmt`, `validate` and `plan`.
-  - `fmt` runs `terraform fmt -check -recursive` over all of `terraform/`.
-  - `validate` runs `init -backend=false` and `validate` per layer. `plan` runs `init` and `plan` per layer with the plan role over OIDC, with locking on, and writes the plan to the job summary. Nothing is ever applied from a PR.
-  - Both jobs use a hardcoded matrix, currently `dir: [terraform/bootstrap, terraform/vpc]`.
-  - **Rule: whenever a new `terraform/<layer>` folder is created, add it to BOTH the `validate` and `plan` matrices, and give it its own backend key** (for example `vpc/terraform.tfstate`). Remind me if I forget.
-  - These checks are not required on `main`, because of the path filter and the matrix check names.
+**AWS and Terraform setup**
+- Account `<account-id>`, region `us-east-1`. Terraform 1.16.6 locally (needed for the S3 backend with `aws login`), `required_version = ">= 1.15.0, < 2.0.0"`, CI `~> 1.15`. AWS provider `~> 6.0` in bootstrap (locked 6.69.0), `~> 6.24` in vpc.
+- State bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, native locking (`use_lockfile`), no DynamoDB. Keys: `bootstrap/terraform.tfstate`, `vpc/terraform.tfstate`.
+- Variables are hardcoded defaults: no tfvars, no `TF_VAR_*` in workflows. The only GitHub Actions variables are `AWS_APPLY_ROLE_ARN` and `AWS_PLAN_ROLE_ARN` (variables, not secrets).
+- Auth: `aws login` at the start of each day, then switch to a new branch. No named profile is used or hardcoded in any `.tf`. Run `aws sts get-caller-identity` before any `terraform` command.
+- OIDC roles (in bootstrap): apply role `eks-sre-github-deploy`, trusted for `main` only, temporarily `AdministratorAccess` (scope it before project end; not a design choice). Plan role `eks-sre-github-plan`, trusted for `pull_request` only, with `ReadOnlyAccess`, state bucket read, and write on `*.tflock`. Trust uses the immutable subject prefix `github_sub_prefix` (includes numeric owner and repo IDs).
+- Project-end teardown: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.
 
-- Day 8: VPC layer is `terraform/vpc/` with its own state key `vpc/terraform.tfstate` and provider `~> 6.24` (regional NAT needs a recent 6.x). It was applied and destroyed locally and is not currently deployed. Design decisions and the log are in the docs repo (`daily-logs/day-08-log.md`).
-  - Two AZs (us-east-1a/b). VPC `10.20.0.0/16`, public subnets `10.20.0.0/24` and `10.20.1.0/24` (ALB only, no nodes), private subnets `10.20.10.0/24` and `10.20.11.0/24` (nodes and pods). A third AZ would add `10.20.2.0/24` and `10.20.12.0/24`.
-  - One regional NAT gateway, created with `vpc_id` and `availability_mode = "regional"`, so it lives in no subnet. One EIP per active AZ. One shared private route table points `0.0.0.0/0` at it. The IGW is still required.
-  - Endpoints: ECR `ecr.api` and `ecr.dkr` interface endpoints (private DNS on, security group allows 443 from the VPC CIDR) and an S3 gateway endpoint on the private route table. The S3 endpoint carries image layers off the NAT.
-  - Subnets carry EKS discovery tags for cluster `sre-observability` (`kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`, `kubernetes.io/cluster/sre-observability = shared`).
-  - Outputs for the EKS layer: `vpc_id`, `vpc_cidr`, `public_subnet_ids`, `private_subnet_ids`, `private_route_table_id`, `nat_gateway_id`, `vpc_endpoint_security_group_id`.
-  - Public images (Docker Hub, quay.io, registry.k8s.io) still go through the NAT until an ECR pull-through cache is added; that will reuse the same two ECR endpoints.
+**VPC layer** (`terraform/vpc/`; applied and destroyed locally on Day 8, not currently deployed)
+- 2 AZs (us-east-1a/b). VPC `10.20.0.0/16`. Public /24s `10.20.0.0` and `10.20.1.0` (ALB only, no nodes). Private /24s `10.20.10.0` and `10.20.11.0` (nodes and pods) share one private route table.
+- One regional NAT gateway (`vpc_id`, `availability_mode = "regional"`, lives in no subnet), one EIP per active AZ. The IGW is still required.
+- Endpoints: `ecr.api` and `ecr.dkr` interface endpoints (private DNS on, SG allows 443 from the VPC CIDR) and an S3 gateway endpoint on the private route table. Public images (Docker Hub, quay.io, registry.k8s.io) still use the NAT until an ECR pull-through cache is added, which will reuse the same endpoints.
+- Subnet tags for cluster `sre-observability`: `kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`, `kubernetes.io/cluster/sre-observability = shared`.
+- Outputs: `vpc_id`, `vpc_cidr`, `public_subnet_ids`, `private_subnet_ids`, `private_route_table_id`, `nat_gateway_id`, `vpc_endpoint_security_group_id`.
 
-Sample of adding the next layer (terraform/eks, backend key eks/terraform.tfstate):.
-
-```yaml
-  validate:
-    strategy:
-      matrix:
-        dir: [terraform/bootstrap, terraform/vpc, terraform/eks]
-  plan:
-    strategy:
-      matrix:
-        dir: [terraform/bootstrap, terraform/vpc, terraform/eks]
-```
-
-Infrastructure as built:
-
-- AWS account `<account-id>`, region `us-east-1`. Terraform 1.16.6 locally (upgraded from 1.14.7 so the S3 backend supports `aws login`), `required_version = ">= 1.15.0, < 2.0.0"`, CI uses `~> 1.15`. AWS provider `~> 6.0` in bootstrap (locked 6.69.0) and `~> 6.24` in vpc.
-- State: S3 bucket `ovr-eks-sre-tfstate-<account-id>-us-east-1`, native locking (`use_lockfile`), no DynamoDB. Keys: `bootstrap/terraform.tfstate`, `vpc/terraform.tfstate`. Bootstrap was applied with local state first, then migrated with `terraform init -migrate-state`.
-- Variables: all Terraform variables are hardcoded defaults (including `github_sub_prefix`). There is no tfvars file and no `TF_VAR_*` in workflows. The only GitHub Actions variables are the two role ARNs.
-- Auth: `aws login` at the start of each working day, then switch to a new branch. No named profile is used and none is hardcoded in any `.tf` file. Confirm with `aws sts get-caller-identity` before any `terraform` command. Terraform 1.16.x is required for the S3 backend to use `aws login` credentials.
-- Two OIDC roles in `terraform/bootstrap/`. Apply role `eks-sre-github-deploy` (variable `AWS_APPLY_ROLE_ARN`): trusted for `main` only, temporarily `AdministratorAccess` (replace with a scoped policy before project end, do not treat as design). Plan role `eks-sre-github-plan` (variable `AWS_PLAN_ROLE_ARN`): trusted for `pull_request` only, with `ReadOnlyAccess`, state bucket read, and write on `*.tflock` only (S3 native locking needs it).
-- Trust policies use the immutable subject prefix from repo Settings → Actions → OIDC (`github_sub_prefix`). It includes numeric owner and repo IDs, not just names.
-- Role ARNs are GitHub Actions variables, not secrets.
-- Teardown order: migrate state back to local, remove `prevent_destroy` and set `force_destroy` on the state bucket, then destroy. ECR uses `force_delete = true`.
-- Gitleaks: local pre-commit hook plus the required `secret-scan` check. CI uses gitleaks 8.24.3 via the action; the repo is under a personal account, so no license key is needed.
-- The `secret-scan` workflow has `pull-requests: read` only, so PR comments fail by design; read findings from the job summary. `terraform-pr` also posts no PR comments and uses the job summary.
-- - Ephemeral layers (currently `terraform/vpc`) are applied locally and destroyed at the end of each session; only bootstrap persists. The Day 13 workflows will take over apply and destroy.
+**EKS layer** (`terraform/eks/`; applied locally on Day 9, [deployed / destroyed: update])
+- Cluster `sre-observability`, Kubernetes 1.36 (variable, fallback 1.35), raw resources, no community module. VPC values come from `terraform_remote_state` (`vpc/terraform.tfstate`).
+- `authentication_mode = "API"`, `bootstrap_cluster_creator_admin_permissions = false`. Access entries: IAM user `OVR-Busayo` and apply role `eks-sre-github-deploy` get `AmazonEKSClusterAdminPolicy`; plan role `eks-sre-github-plan` gets `AmazonEKSViewPolicy`. The apply role's cluster-admin is temporary, like its AdministratorAccess.
+- API endpoint public + private, public CIDR `0.0.0.0/0` on purpose (GitHub runners). No customer-managed KMS key, no control plane logging.
+- Managed node group: 2 x t3.large On-Demand (min 2, desired 2, max 3), private subnets, AL2023, 50 GiB gp3 via launch template, IMDSv2 required, hop limit 1. AMI release unpinned. VPC CNI permissions sit on the node role for now.
+- Hop limit 1 means the AWS Load Balancer Controller needs `vpcId` and `region` set explicitly (Day 36).
+- Add-ons pinned: vpc-cni v1.23.2-eksbuild.3, kube-proxy v1.36.0-eksbuild.48, coredns v1.14.7-eksbuild.11, eks-pod-identity-agent v1.4.0-eksbuild.4. EBS CSI is deferred to the storage days.

@@ -1,11 +1,11 @@
 # Progress Tracker
 
-**Current Day:** Day 9
+**Current Day:** Day 10
 **Current status:** Not started
-**Last updated:** 2026-10-20
-**Streaks**: 7
+**Last updated:** 2026-10-21
+**Streaks**: 9
 **Missed days**: 0
-**Longest Streak**: 7
+**Longest Streak**: 9
 
 ## How to use this tracker
 
@@ -29,7 +29,7 @@
 | 6 | Gitleaks secret scanning | Pass 1 | Done | [X mins] | PR #5 merged; `secret-scan` required on main; canary PR #6 failed with github-pat finding and merge blocked; hook blocked canary locally | Local hook and CI gitleaks versions can differ |
 | 7 | Terraform PR validation/plan | Pass 1 | Done | 120 mins | PR #7 merged; `terraform-pr` runs fmt, validate and plan on PRs; bootstrap plan clean (no changes); no apply in PR | Why the plan role needs write on `*.tflock` for native locking |
 | 8 | VPC/network layer | Pass 1 | Done | 180 mins | `terraform/vpc` applied and destroyed locally: 2-AZ VPC, regional NAT, ECR/S3 endpoints; PR matrix updated; log in `day-08-log.md` | None |
-| 9 | EKS provisioning | Pass 1 | Not started | — | — | — |
+| 9 | EKS provisioning | Pass 1 | Done | 180 mins | PR #8 merged; `terraform/eks` applied: K8s 1.36, 2 x t3.large, 4 add-ons, 3 access entries; PR matrices updated; log in `day-09-log.md` | Overall EKS setup |
 | 10 | EKS access entries and kubectl | Pass 1 | Not started | — | — | — |
 | 11 | Online Boutique plain-manifest deployment | Pass 1 | Not started | — | — | — |
 | 12 | Application verification and kubectl drills | Pass 1 | Not started | — | — | — |
@@ -40,7 +40,7 @@ Continue the table for later Days as the detailed weekly plans are created. The 
 
 ## Current checkpoint
 
-Day 8. `terraform-pr` workflow (fmt, validate, plan) is in place; new layers are added to its `validate` and `plan` matrices by hand. Next: VPC/network layer.
+Day 9. `terraform/eks` is in place (cluster, node group, add-ons, access entries). Next: verify access with `kubectl` (Day 10).
 
 ## Blockers / decisions
 
