@@ -2,7 +2,7 @@
 
 Attach these three files when opening a fresh chat or switching AI accounts: `master-plan.md`, the current `week-NN-plan.md`, and `progress.md`. Then paste:
 
-> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` for my exact position. I am on Day [10], Pass [1], status [starting]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, give no solution upfront: ask me to attempt it and give only hints or official-doc pointers. Do not assume earlier infrastructure or pipeline artifacts exist unless the files say so.
+> We are continuing my DevOps/SRE Daily Build Challenge. Treat `master-plan.md` as the source of truth, use the current weekly plan for the next task, and use `progress.md` for my exact position.I am on Day [13], Pass [1], status [starting]. Help only with the current work package and keep it within its acceptance criteria. During Pass 1, explain and assist while making sure I understand. During Pass 2, give no solution upfront: ask me to attempt it and give only hints or official-doc pointers. Do not assume earlier infrastructure or pipeline artifacts exist unless the files say so.
 
 For an ongoing chat, send only the Day, Pass, what was attempted and the exact error/output. Attach a file or log only when needed.
 
@@ -12,7 +12,8 @@ For an ongoing chat, send only the Day, Pass, what was attempted and the exact e
 
 - `master-plan.md` is the source of truth. Small deviations are recorded here and in `progress.md`; the master plan is not rewritten for each one.
 - Terraform owns AWS infrastructure and the initial Argo CD install. Argo CD manages the application and observability Helm releases. Never assign the same Helm release to both.
-- Helm is the only deployment method for the application pipeline. `kubernetes-manifests/` and `kustomize/` are reference only.
+- Helm is the target deployment method for the application pipeline. Until Week 5, `kubernetes-manifests/` is the active deployment path (applied manually with `kubectl apply -f`) and a bot PR keeps its image tags current. `kustomize/` stays reference only.
+- GitHub Actions builds and publishes immutable images to ECR and opens a PR bumping image tags in `kubernetes-manifests/` (this becomes a Helm values bump once Helm exists). Argo CD reconciles merged changes later.
 - GitHub Actions builds, tests, scans and publishes immutable images to ECR, and proposes Helm values updates in Git. Argo CD reconciles merged changes.
 - Keep existing repo names and structure; restructure only for a concrete problem. Before suggesting changes, check the current work package, repo structure and these decisions, and keep changes small.
 
@@ -54,10 +55,13 @@ For an ongoing chat, send only the Day, Pass, what was attempted and the exact e
 - Subnet tags for cluster `sre-observability`: `kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`, `kubernetes.io/cluster/sre-observability = shared`.
 - Outputs: `vpc_id`, `vpc_cidr`, `public_subnet_ids`, `private_subnet_ids`, `private_route_table_id`, `nat_gateway_id`, `vpc_endpoint_security_group_id`.
 
-**EKS layer** (`terraform/eks/`; applied locally on Day 9, [deployed / destroyed: update])
+**EKS layer** (`terraform/eks/`; applied and destroyed locally on Days 9 to 12, not currently deployed)
 - Cluster `sre-observability`, Kubernetes 1.36 (variable, fallback 1.35), raw resources, no community module. VPC values come from `terraform_remote_state` (`vpc/terraform.tfstate`).
 - `authentication_mode = "API"`, `bootstrap_cluster_creator_admin_permissions = false`. Access entries: IAM user `OVR-Busayo` and apply role `eks-sre-github-deploy` get `AmazonEKSClusterAdminPolicy`; plan role `eks-sre-github-plan` gets `AmazonEKSViewPolicy`. The apply role's cluster-admin is temporary, like its AdministratorAccess.
 - API endpoint public + private, public CIDR `0.0.0.0/0` on purpose (GitHub runners). No customer-managed KMS key, no control plane logging.
 - Managed node group: 2 x t3.large On-Demand (min 2, desired 2, max 3), private subnets, AL2023, 50 GiB gp3 via launch template, IMDSv2 required, hop limit 1. AMI release unpinned. VPC CNI permissions sit on the node role for now.
 - Hop limit 1 means the AWS Load Balancer Controller needs `vpcId` and `region` set explicitly (Day 36).
 - Add-ons pinned: vpc-cni v1.23.2-eksbuild.3, kube-proxy v1.36.0-eksbuild.48, coredns v1.14.7-eksbuild.11, eks-pod-identity-agent v1.4.0-eksbuild.4. EBS CSI is deferred to the storage days.
+
+**Application deployment (Days 11 to 12)**
+- Applied manually with `kubectl apply -f kubernetes-manifests/`. 11 services plus `redis-cart` ran. The frontend Ingress is commented out; access is by `kubectl port-forward svc/frontend 8080:80`. Ingress or Gateway API comes later in the plan.

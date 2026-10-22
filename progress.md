@@ -1,11 +1,11 @@
 # Progress Tracker
 
-**Current Day:** Day 10
+**Current Day:** Day 13
 **Current status:** Not started
 **Last updated:** 2026-10-21
-**Streaks**: 9
+**Streaks**: 10
 **Missed days**: 0
-**Longest Streak**: 9
+**Longest Streak**: 10
 
 ## How to use this tracker
 
@@ -30,9 +30,9 @@
 | 7 | Terraform PR validation/plan | Pass 1 | Done | 120 mins | PR #7 merged; `terraform-pr` runs fmt, validate and plan on PRs; bootstrap plan clean (no changes); no apply in PR | Why the plan role needs write on `*.tflock` for native locking |
 | 8 | VPC/network layer | Pass 1 | Done | 180 mins | `terraform/vpc` applied and destroyed locally: 2-AZ VPC, regional NAT, ECR/S3 endpoints; PR matrix updated; log in `day-08-log.md` | None |
 | 9 | EKS provisioning | Pass 1 | Done | 180 mins | PR #8 merged; `terraform/eks` applied: K8s 1.36, 2 x t3.large, 4 add-ons, 3 access entries; PR matrices updated; log in `day-09-log.md` | Overall EKS setup |
-| 10 | EKS access entries and kubectl | Pass 1 | Not started | — | — | — |
-| 11 | Online Boutique plain-manifest deployment | Pass 1 | Not started | — | — | — |
-| 12 | Application verification and kubectl drills | Pass 1 | Not started | — | — | — |
+| 10 | EKS access entries and kubectl | Pass 1 | Done | 240 mins | `kubectl get nodes/namespaces/cluster-info` pass as OVR-Busayo through the access entry; log in `day-10-log.md` | [AWS authentication vs Kubernetes authorization] |
+| 11 | Online Boutique plain-manifest deployment | Pass 1 | Done | incl. Day 10 | `build-images` pipeline run green, 11 images in ECR, bump PR merged; `kubectl apply -f kubernetes-manifests/`: 12 pods Running; see `day-10-log.md` | [why image tags are immutable and how the bump PR works] |
+| 12 | Application verification and kubectl drills | Pass 1 | Done | incl. Day 10 | describe, logs, events, rollout, endpoints and port-forward checks pass; see `day-10-log.md` | [none / fill in] |
 | 13 | Manual Terraform apply/destroy workflows | Pass 1 | Not started | — | — | — |
 | 14 | Break/fix and Week 1 review | Pass 1 | Not started | — | — | — |
 
@@ -40,7 +40,7 @@ Continue the table for later Days as the detailed weekly plans are created. The 
 
 ## Current checkpoint
 
-Day 9. `terraform/eks` is in place (cluster, node group, add-ons, access entries). Next: verify access with `kubectl` (Day 10).
+Day 12. `terraform/eks` and the `build-images` pipeline are in place and the full app ran on the cluster. Next: manual apply/destroy workflows (Day 13).
 
 ## Blockers / decisions
 
@@ -51,6 +51,7 @@ Day 9. `terraform/eks` is in place (cluster, node group, add-ons, access entries
 - Day 3/4/5 minimum Terraform version raised to `>= 1.15.0` (S3 backend needs it for `aws login`).
 - Secret scanning is a standalone `secret-scan.yml` (no path filters, `workflow_call` enabled) instead of being folded into one pipeline. It stays required on `main` and the future app pipeline calls it as its first job.
 - Gitleaks workflow has read-only permissions, so it can't comment on PRs. Findings are read from the job summary instead.
+- Image build pipeline (`build-images.yml`) was inserted before the first deployment. It reuses the apply role, which is temporarily admin; split out a push-only role when that role is scoped.
 
 ## Weekly review
 
