@@ -1,11 +1,11 @@
 # Progress Tracker
 
-**Current Day:** Day 13
+**Current Day:** Day 15
 **Current status:** Not started
-**Last updated:** 2026-10-21
-**Streaks**: 10
+**Last updated:** 2026-10-23
+**Streaks**: 11
 **Missed days**: 0
-**Longest Streak**: 10
+**Longest Streak**: 11
 
 ## How to use this tracker
 
@@ -33,14 +33,16 @@
 | 10 | EKS access entries and kubectl | Pass 1 | Done | 240 mins | `kubectl get nodes/namespaces/cluster-info` pass as OVR-Busayo through the access entry; log in `day-10-log.md` | [AWS authentication vs Kubernetes authorization] |
 | 11 | Online Boutique plain-manifest deployment | Pass 1 | Done | incl. Day 10 | `build-images` pipeline run green, 11 images in ECR, bump PR merged; `kubectl apply -f kubernetes-manifests/`: 12 pods Running; see `day-10-log.md` | [why image tags are immutable and how the bump PR works] |
 | 12 | Application verification and kubectl drills | Pass 1 | Done | incl. Day 10 | describe, logs, events, rollout, endpoints and port-forward checks pass; see `day-10-log.md` | [none / fill in] |
-| 13 | Manual Terraform apply/destroy workflows | Pass 1 | Not started | — | — | — |
-| 14 | Break/fix and Week 1 review | Pass 1 | Not started | — | — | — |
+| 13 | Manual Terraform apply/destroy workflows | Pass 1 | Done | 120 mins | PR #12 merged; `terraform-apply` dispatch tested (no-op), `terraform-destroy` preview and `yes` run tested, eks then vpc destroyed; log in `day-13-log.md` | What a cancelled run does to the state lock |
+| 14 | Break/fix and Week 1 review | Pass 1 | Done | incl. day 13 | Real incident reviewed instead of a deliberate break (DNS failure mid-destroy, cancelled preview); see `day-13-log.md` | No deliberate Kubernetes break/fix yet; revisit Day 23 |
 
 Continue the table for later Days as the detailed weekly plans are created. The full roadmap and continuous Day numbering live in `master-plan.md`.
 
 ## Current checkpoint
 
-Day 12. `terraform/eks` and the `build-images` pipeline are in place and the full app ran on the cluster. Next: manual apply/destroy workflows (Day 13).
+Day 14. The EKS stack, image pipeline and apply/destroy workflows are in place. Week 1 is complete. Next: Week 2, Kubernetes workload behaviour (Deployments and rollouts, Day 15).
+
+- Terraform apply runs on merge to `main` for `terraform/vpc/**` and `terraform/eks/**` (and by dispatch); this deviates from the plan's manual-only rule. A state guard skips a layer on push if its state is empty. Destroy is dispatch-only with a `no`/`yes` input (`no` previews).
 
 ## Blockers / decisions
 
